@@ -66,7 +66,7 @@ while in testing phase:
     top: "data"
     top: "label"
     include {
-      phase: TRAIN
+      phase: TEST
     }
     transform_param {
         mirror: false
