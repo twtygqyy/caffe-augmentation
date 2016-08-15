@@ -22,7 +22,8 @@ and all functions
 * max_color_shift - max color shift along RGB axes
 * apply_probability - how often every transformation should be applied, default 0.5;
 * debug_params - enable/disable printing tranformation parameters, default false;
- from [@kostyaev](https://github.com/kostyaev)'s [caffe-augmentation](https://github.com/kostyaev/caffe-augmentation) are kept with slightly modifications:
+
+from [@kostyaev](https://github.com/kostyaev)'s [caffe-augmentation](https://github.com/kostyaev/caffe-augmentation) are kept with slightly modifications:
 
 ## How to use
 You could specify your network prototxt as:
