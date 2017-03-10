@@ -98,7 +98,7 @@ message NetParameter {
 // NOTE
 // Update the next available ID when you add a new SolverParameter field.
 //
-// SolverParameter next available ID: 41 (last added: type)
+// SolverParameter next available ID: 42 (last added: layer_wise_reduce)
 message SolverParameter {
   //////////////////////////////////////////////////////////////////////////////
   // Specifying the train and test networks
@@ -128,8 +128,7 @@ message SolverParameter {
   // The states for the train/test nets. Must be unspecified or
   // specified once per net.
   //
-  // By default, all states will have solver = true;
-  // train_state will have phase = TRAIN,
+  // By default, train_state will have phase = TRAIN,
   // and all test_state's will have phase = TEST.
   // Other defaults are set according to the NetState defaults.
   optional NetState train_state = 26;
@@ -239,6 +238,9 @@ message SolverParameter {
   }
   // DEPRECATED: use type instead of solver_type
   optional SolverType solver_type = 30 [default = SGD];
+
+  // Overlap compute and communication for data parallel training
+  optional bool layer_wise_reduce = 41 [default = true];
 }
 
 // A message that stores the solver snapshots
@@ -418,7 +420,7 @@ message TransformationParameter {
   optional uint32 crop_size = 3 [default = 0];
   // mean_file and mean_value cannot be specified at the same time
   optional string mean_file = 4;
-  // if specified can be repeated once (would substract it from all the channels)
+  // if specified can be repeated once (would subtract it from all the channels)
   // or can be repeated the same number of times as channels
   // (would subtract them from the corresponding channel)
   repeated float mean_value = 5;
@@ -426,31 +428,6 @@ message TransformationParameter {
   optional bool force_color = 6 [default = false];
   // Force the decoded image to have 1 color channels.
   optional bool force_gray = 7 [default = false];
-
-  // Image augmentation
-  // Specify the range of scaling factor for doing resizing
-  optional float min_scaling_factor = 8 [default = 0.75];
-  optional float max_scaling_factor = 9 [default = 1.50];
-  // Specify the angle for doing rotation
-  optional uint32 max_rotation_angle = 10 [default = 0];
-  // Specify the contrast, brightness, smooth and color shift for augmentation
-  optional bool contrast_brightness_adjustment = 11 [default = false];
-  optional bool smooth_filtering = 12 [default = false];
-  optional float min_contrast = 14 [default = 0.8];
-  optional float max_contrast = 15 [default = 1.2];
-  optional uint32 max_brightness_shift = 16 [default = 5];
-  optional float max_smooth = 17 [default = 6];
-  optional uint32 max_color_shift = 20 [default = 0];
-  
-  // Min side resizing, keep aspect ratio
-  optional uint32 min_side_min = 13 [default = 0];
-  optional uint32 min_side_max = 21 [default = 0];
-  optional uint32 min_side = 22 [default = 0];
-  
-  optional float apply_probability = 18 [default = 0.5];
-  optional bool debug_params = 19 [default = false];
-
-
 }
 
 // Message that stores parameters shared by loss layers
@@ -459,7 +436,7 @@ message LossParameter {
   optional int32 ignore_label = 1;
   // How to normalize the loss for loss layers that aggregate across batches,
   // spatial dimensions, or other dimensions.  Currently only implemented in
-  // SoftmaxWithLoss layer.
+  // SoftmaxWithLoss and SigmoidCrossEntropyLoss layers.
   enum NormalizationMode {
     // Divide by the number of examples in the batch times spatial dimensions.
     // Outputs that receive the ignore label will NOT be ignored in computing
@@ -473,6 +450,8 @@ message LossParameter {
     // Do not normalize the loss.
     NONE = 3;
   }
+  // For historical reasons, the default normalization for
+  // SigmoidCrossEntropyLoss is BATCH_SIZE and *not* VALID.
   optional NormalizationMode normalization = 3 [default = VALID];
   // Deprecated.  Ignored if normalization is specified.  If normalization
   // is not specified, then setting this to false will be equivalent to
@@ -664,8 +643,6 @@ message DataParameter {
   // be larger than the number of keys in the database.
   // DEPRECATED. Each solver accesses a different subset of the database.
   optional uint32 rand_skip = 7 [default = 0];
-  // The shuffle variable is for the data layier to access random data point (for shuffling data when you read it!!). The random point would be set as urand(0, length of data).
-  optional bool shuffle = 11 [default = false];
   optional DB backend = 8 [default = LEVELDB];
   // DEPRECATED. See TransformationParameter. For data pre-processing, we can do
   // simple scaling and subtracting the data mean, if provided. Note that the
@@ -680,8 +657,8 @@ message DataParameter {
   optional bool mirror = 6 [default = false];
   // Force the encoded image to have 3 color channels
   optional bool force_encoded_color = 9 [default = false];
-  // Prefetch queue (Number of batches to prefetch to host memory, increase if
-  // data access bandwidth varies).
+  // Prefetch queue (Increase if data feeding bandwidth varies, within the
+  // limit of device memory for GPU training)
   optional uint32 prefetch = 10 [default = 4];
 }
 
@@ -1421,6 +1398,6 @@ message PReLUParameter {
 
   // Initial value of a_i. Default is a_i=0.25 for all i.
   optional FillerParameter filler = 1;
-  // Whether or not slope paramters are shared across channels.
+  // Whether or not slope parameters are shared across channels.
   optional bool channel_shared = 2 [default = false];
 }
